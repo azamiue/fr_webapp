@@ -6,9 +6,10 @@ import { AuthenticatorSchema } from "./type";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { authenSchema } from "./type";
 import { InputValid } from "./input";
-import React, { useEffect } from 'react';
-import { Bounce, ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useEffect, useMemo } from "react";
+import { Bounce, ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { InformationPage } from "./information";
 
 export default function AuthenPage() {
   const methods = useForm<AuthenticatorSchema>({
@@ -27,8 +28,8 @@ export default function AuthenPage() {
 
   useEffect(() => {
     if (success) {
-      toast.success('Email is valid!', {
-        position: "top-center",
+      toast.success("Email is valid!", {
+        position: "top-right",
         autoClose: 2000,
         hideProgressBar: true,
         closeOnClick: true,
@@ -36,13 +37,13 @@ export default function AuthenPage() {
         draggable: true,
         progress: undefined,
         theme: "dark",
-        transition: Bounce
+        transition: Bounce,
       });
     }
 
     if (fail) {
-      toast.error('Email is invalid!', {
-        position: "top-center",
+      toast.error("Email is invalid!", {
+        position: "top-right",
         autoClose: 1000,
         hideProgressBar: true,
         closeOnClick: true,
@@ -50,22 +51,36 @@ export default function AuthenPage() {
         draggable: true,
         progress: undefined,
         theme: "dark",
-        transition: Bounce
+        transition: Bounce,
       });
       setValue("fail", false);
     }
   }, [success, fail]);
 
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="inline-block max-w-xl text-center justify-center">
-        <span className={title({ color: "violet" })}>Authentication&nbsp;</span>
-      </div>
-
-      <FormProvider {...methods}>
-        <InputValid />
-        <ToastContainer/>
-      </FormProvider>
+    <section>
+      {!success && (
+        <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+          <div className="inline-block max-w-xl text-center justify-center">
+            <span className={title({ color: "pink" })}>
+              Authentication&nbsp;
+            </span>
+          </div>
+          <h1 className="text-sm font-semibold">
+            Eligibility check: enter your email you have received an invitation
+            from the organizers
+          </h1>
+          <FormProvider {...methods}>
+            <InputValid />
+          </FormProvider>
+        </div>
+      )}
+      {success && (
+        <FormProvider {...methods}>
+          <InformationPage />
+        </FormProvider>
+      )}
+      <ToastContainer />
     </section>
   );
 }
