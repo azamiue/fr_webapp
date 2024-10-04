@@ -1,56 +1,86 @@
-import { Link } from "@nextui-org/link";
-import { Snippet } from "@nextui-org/snippet";
-import { Code } from "@nextui-org/code";
-import { button as buttonStyles } from "@nextui-org/theme";
+"use client";
 
-import { siteConfig } from "@/config/site";
-import { title, subtitle } from "@/components/primitives";
-import { GithubIcon } from "@/components/icons";
+import { title } from "@/components/primitives";
+import { useForm, FormProvider, useWatch } from "react-hook-form";
+import { AuthenticatorSchema } from "./type";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { authenSchema } from "./type";
+import { InputValid } from "./input";
+import React, { useEffect, useMemo } from "react";
+import { Bounce, ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { InformationPage } from "./information";
 
-export default function Home() {
+export default function AuthenPage() {
+  const methods = useForm<AuthenticatorSchema>({
+    resolver: zodResolver(authenSchema),
+    defaultValues: {
+      email: "",
+      loading: false,
+      success: false,
+      fail: false,
+    },
+  });
+
+  const { control, setValue } = methods;
+  const success = useWatch({ control, name: "success" });
+  const fail = useWatch({ control, name: "fail" });
+
+  useEffect(() => {
+    if (success) {
+      toast.success("Email is valid!", {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        transition: Bounce,
+      });
+    }
+
+    if (fail) {
+      toast.error("Email is invalid!", {
+        position: "top-right",
+        autoClose: 1000,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        transition: Bounce,
+      });
+      setValue("fail", false);
+    }
+  }, [success, fail]);
+
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="inline-block max-w-xl text-center justify-center">
-        <span className={title()}>Make&nbsp;</span>
-        <span className={title({ color: "violet" })}>beautiful&nbsp;</span>
-        <br />
-        <span className={title()}>
-          websites regardless of your design experience.
-        </span>
-        <div className={subtitle({ class: "mt-4" })}>
-          Beautiful, fast and modern React UI library.
+    <section>
+      {!success && (
+        <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+          <div className="inline-block max-w-xl text-center justify-center">
+            <span className={title({ color: "pink" })}>
+              Authentication&nbsp;
+            </span>
+          </div>
+          <h1 className="text-sm font-semibold">
+            Eligibility check: enter your email you have received an invitation
+            from the organizers
+          </h1>
+          <FormProvider {...methods}>
+            <InputValid />
+          </FormProvider>
         </div>
-      </div>
-
-      <div className="flex gap-3">
-        <Link
-          isExternal
-          className={buttonStyles({
-            color: "primary",
-            radius: "full",
-            variant: "shadow",
-          })}
-          href={siteConfig.links.docs}
-        >
-          Documentation
-        </Link>
-        <Link
-          isExternal
-          className={buttonStyles({ variant: "bordered", radius: "full" })}
-          href={siteConfig.links.github}
-        >
-          <GithubIcon size={20} />
-          GitHub
-        </Link>
-      </div>
-
-      <div className="mt-8">
-        <Snippet hideCopyButton hideSymbol variant="bordered">
-          <span>
-            Get started by editing <Code color="primary">app/page.tsx</Code>
-          </span>
-        </Snippet>
-      </div>
+      )}
+      {success && (
+        <FormProvider {...methods}>
+          <InformationPage />
+        </FormProvider>
+      )}
+      <ToastContainer />
     </section>
   );
 }

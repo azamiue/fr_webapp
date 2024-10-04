@@ -29,7 +29,7 @@ import {
 export const Navbar = () => {
   return (
     <NextUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
+      {/* <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <ul className="hidden lg:flex gap-4 justify-start ml-2">
           {siteConfig.navItems.map((item) => (
             <NavbarItem key={item.href}>
@@ -46,7 +46,7 @@ export const Navbar = () => {
             </NavbarItem>
           ))}
         </ul>
-      </NavbarContent>
+      </NavbarContent> */}
 
       <NavbarContent
         className="hidden sm:flex basis-1/5 sm:basis-full"
