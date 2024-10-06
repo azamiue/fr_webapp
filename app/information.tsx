@@ -47,6 +47,7 @@ export function InformationPage() {
             alert(
               `${name} | ${organization} | ${os} | ${browser} | ${pubIP}  are submitted!`
             );
+            setValue("faceStep", true);
           }}
           isLoading={loading}
         >

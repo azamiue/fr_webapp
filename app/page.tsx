@@ -11,6 +11,7 @@ import { Bounce, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { InformationPage } from "./information";
 import { getOSInfo, getBrowserInfo } from "./infoBrowser";
+import { FaceDetect } from "./face";
 
 export default function AuthenPage() {
   const methods = useForm<AuthenticatorSchema>({
@@ -23,12 +24,14 @@ export default function AuthenPage() {
       os: getOSInfo(),
       browser: getBrowserInfo(),
       pubIP: "",
+      faceStep: false,
     },
   });
 
   const { control, setValue } = methods;
   const success = useWatch({ control, name: "success" });
   const fail = useWatch({ control, name: "fail" });
+  const faceStep = useWatch({ control, name: "faceStep" });
 
   useEffect(() => {
     if (success) {
@@ -77,28 +80,34 @@ export default function AuthenPage() {
 
   return (
     <section>
-      {!success && (
-        <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-          <div className="inline-block max-w-xl text-center justify-center">
-            <span className={title({ color: "pink" })}>
-              Authentication&nbsp;
-            </span>
-          </div>
-          <h1 className="text-sm font-semibold">
-            Eligibility check: enter your email you have received an invitation
-            from the organizers
-          </h1>
-          <FormProvider {...methods}>
-            <InputValid />
-          </FormProvider>
+      {!faceStep && (
+        <div>
+          {!success && (
+            <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+              <div className="inline-block max-w-xl text-center justify-center">
+                <span className={title({ color: "pink" })}>
+                  Authentication&nbsp;
+                </span>
+              </div>
+              <h1 className="text-sm font-semibold">
+                Eligibility check: enter your email you have received an
+                invitation from the organizers
+              </h1>
+              <FormProvider {...methods}>
+                <InputValid />
+              </FormProvider>
+            </div>
+          )}
+          {success && (
+            <FormProvider {...methods}>
+              <InformationPage />
+            </FormProvider>
+          )}
+          <ToastContainer />
         </div>
       )}
-      {success && (
-        <FormProvider {...methods}>
-          <InformationPage />
-        </FormProvider>
-      )}
-      <ToastContainer />
+
+      {faceStep && <FaceDetect />}
     </section>
   );
 }

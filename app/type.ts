@@ -1,4 +1,3 @@
-import { browser } from "process";
 import { z } from "zod";
 
 export const authenSchema = z.object({
@@ -11,6 +10,7 @@ export const authenSchema = z.object({
   os: z.string(),
   pubIP: z.string(),
   browser: z.string(),
+  faceStep: z.boolean(),
 });
 
 export type AuthenticatorSchema = z.infer<typeof authenSchema>;
