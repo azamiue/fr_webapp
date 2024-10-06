@@ -10,6 +10,9 @@ export function InformationPage() {
   const loading = useWatch({ control, name: "loading" });
   const name = useWatch({ control, name: "name" });
   const organization = useWatch({ control, name: "organization" });
+  const pubIP = useWatch({ control, name: "pubIP" });
+  const os = useWatch({ control, name: "os" });
+  const browser = useWatch({ control, name: "browser" });
 
   return (
     <section className="flex flex-col justify-center items-center gap-y-10">
@@ -41,7 +44,9 @@ export function InformationPage() {
           color="primary"
           onClick={() => {
             setValue("loading", true);
-            alert(`${name} and ${organization} are submitted!`);
+            alert(
+              `${name} | ${organization} | ${os} | ${browser} | ${pubIP}  are submitted!`
+            );
           }}
           isLoading={loading}
         >

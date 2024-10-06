@@ -10,6 +10,7 @@ import React, { useEffect, useMemo } from "react";
 import { Bounce, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { InformationPage } from "./information";
+import { getOSInfo, getBrowserInfo } from "./infoBrowser";
 
 export default function AuthenPage() {
   const methods = useForm<AuthenticatorSchema>({
@@ -19,6 +20,9 @@ export default function AuthenPage() {
       loading: false,
       success: false,
       fail: false,
+      os: getOSInfo(),
+      browser: getBrowserInfo(),
+      pubIP: "",
     },
   });
 
@@ -56,6 +60,20 @@ export default function AuthenPage() {
       setValue("fail", false);
     }
   }, [success, fail]);
+
+  useEffect(() => {
+    async function fetchData() {
+      fetch("https://api.ipify.org?format=json")
+        .then((response) => response.json())
+        .then((data) => {
+          setValue("pubIP", data.ip);
+        })
+        .catch((error) => {
+          console.error("Error fetching IP address:", error);
+        });
+    }
+    fetchData();
+  }, []);
 
   return (
     <section>
