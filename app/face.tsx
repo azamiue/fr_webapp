@@ -2,13 +2,22 @@
 
 import * as faceapi from "face-api.js";
 import { useEffect, useRef, useState } from "react";
+import { AuthenticatorSchema } from "./type";
+import { useFormContext } from "react-hook-form";
 
 export function FaceDetect() {
+  const { control, setValue } = useFormContext<AuthenticatorSchema>();
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isModelsLoaded, setIsModelsLoaded] = useState<boolean>(false);
   const [faceDirection, setFaceDirection] =
     useState<string>("No face detected");
+  const lastCaptureTime = useRef<number>(0);
+  const captureDebounceTime = 100;
+
+  const [currentPose, setCurrentPose] = useState<string>("Straight");
+  const [count, setCount] = useState(0);
 
   // Load models
   useEffect(() => {
@@ -23,30 +32,15 @@ export function FaceDetect() {
     loadModels();
   }, []);
 
-  // activate cam
-  useEffect(() => {
-    if (isModelsLoaded && videoRef.current) {
-      navigator.mediaDevices
-        .getUserMedia({ video: { width: 300 } })
-        .then((stream) => {
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        });
-    }
-  }, [isModelsLoaded]);
-
-  // Calculate face pose angles
+  // Function to calculate face pose based on landmarks
   const calculateFacePose = (landmarks: any) => {
     const nose = landmarks.getNose();
     const leftEye = landmarks.getLeftEye();
     const rightEye = landmarks.getRightEye();
 
-    // Get center points
-    const noseTop = nose[3]; // Middle of nose bridge
-    const noseBottom = nose[6]; // Bottom of nose
+    const noseTop = nose[3];
+    const noseBottom = nose[6];
 
-    // Calculate eye centers
     const leftEyeCenter = {
       x:
         leftEye.reduce((sum: number, point: any) => sum + point.x, 0) /
@@ -64,13 +58,11 @@ export function FaceDetect() {
         rightEye.length,
     };
 
-    // Calculate yaw (left-right)
     const eyeDistance = rightEyeCenter.x - leftEyeCenter.x;
     const noseCenterX = (noseTop.x + noseBottom.x) / 2;
     const eyesCenterX = (leftEyeCenter.x + rightEyeCenter.x) / 2;
     const yaw = ((noseCenterX - eyesCenterX) / eyeDistance) * 100;
 
-    // Calculate pitch (up-down)
     const eyeLevel = (leftEyeCenter.y + rightEyeCenter.y) / 2;
     const noseHeight = noseBottom.y - noseTop.y;
     const pitch = ((noseBottom.y - eyeLevel) / noseHeight - 1.5) * 50;
@@ -78,31 +70,95 @@ export function FaceDetect() {
     return { yaw, pitch };
   };
 
-  // Determine face direction based on angles with moving average
-  const previousDirections: string[] = [];
+  // Function to determine face direction based on angles
   const getFaceDirection = (pose: { yaw: number; pitch: number }) => {
     const { yaw, pitch } = pose;
 
-    // Adjusted thresholds
-    const yawThreshold = 12; // Threshold for left-right detection
-    const pitchThreshold = 10; // Threshold for up-down detection
+    const yawThreshold = 12;
+    const pitchThreshold = 10;
 
-    // Check for the most prominent direction based on pitch
     if (Math.abs(pitch) > pitchThreshold) {
       if (pitch < 90 && yaw < 10) return "Up";
-      if (pitch > 140 && yaw < 10) return "Down";
+      if (pitch > 160 && yaw < 10) return "Down";
     }
 
-    // Check for the most prominent direction based on yaw
     if (Math.abs(yaw) > yawThreshold) {
       if (yaw < 0) return "Right";
       if (yaw > 15) return "Left";
     }
 
-    return "Straight"; // Default direction if no thresholds are met
+    return "Straight";
   };
 
-  // face detect && landmarks
+  // Capture and save frame from video stream
+  const captureAndSaveFrameFromVideo = async (
+    boundingBox: faceapi.Box,
+    direction: string
+  ) => {
+    // Check debounce time
+    const currentTime = Date.now();
+    if (currentTime - lastCaptureTime.current < captureDebounceTime) {
+      return;
+    }
+
+    if (videoRef.current) {
+      const video = videoRef.current;
+
+      try {
+        const offscreenCanvas = new OffscreenCanvas(224, 224);
+        const context = offscreenCanvas.getContext("2d");
+
+        if (context) {
+          context.drawImage(
+            video,
+            boundingBox.x - 50,
+            boundingBox.y - 50,
+            boundingBox.width,
+            boundingBox.height,
+            0,
+            0,
+            224,
+            224
+          );
+
+          const blob = await offscreenCanvas.convertToBlob({
+            type: "image/jpeg",
+            quality: 1,
+          });
+
+          const formData = new FormData();
+          formData.append("image", blob, `${direction}-${Date.now()}.jpg`);
+
+          const response = await fetch("/api/save-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (response.ok) {
+            console.log(`save img success`);
+          } else {
+            console.error("Failed to save image");
+          }
+        }
+
+        lastCaptureTime.current = currentTime;
+      } catch (error) {
+        console.error("Error capturing and saving frame from video:", error);
+      }
+    }
+  };
+
+  // Activate camera
+  useEffect(() => {
+    if (isModelsLoaded && videoRef.current) {
+      navigator.mediaDevices.getUserMedia({ video: {} }).then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      });
+    }
+  }, [isModelsLoaded]);
+
   const handleVideoPlay = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -115,6 +171,12 @@ export function FaceDetect() {
           .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
           .withFaceLandmarks();
 
+        // Ensure only one face is detected
+        if (detections.length >= 2) {
+          setFaceDirection("Multiple faces detected");
+          return; // Skip further processing if more than one face is detected
+        }
+
         const resizedDetections = faceapi.resizeResults(
           detections,
           displaySize
@@ -125,16 +187,23 @@ export function FaceDetect() {
           context.clearRect(0, 0, canvas.width, canvas.height);
 
           if (resizedDetections.length > 0) {
-            // Draw face detections
             faceapi.draw.drawDetections(canvas, resizedDetections);
             faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-            // Calculate pose and get direction
             const pose = calculateFacePose(resizedDetections[0].landmarks);
             const direction = getFaceDirection(pose);
-            setFaceDirection(`Looking: ${direction}`);
+            setFaceDirection(direction);
 
-            // Debug info (optional - remove in production)
+            const boundingBox = resizedDetections[0].detection.box;
+
+            if (
+              direction === currentPose &&
+              faceDirection === "Multiple faces detected"
+            ) {
+              setCount((prevCount) => prevCount + 1);
+              captureAndSaveFrameFromVideo(boundingBox, direction);
+            }
+
             context.fillStyle = "white";
             context.font = "16px Arial";
             context.fillText(
@@ -180,7 +249,8 @@ export function FaceDetect() {
           fontWeight: "bold",
         }}
       >
-        {faceDirection}
+        Looking for: {currentPose}
+        <div>Your pose: {faceDirection}</div>
       </div>
     </div>
   );

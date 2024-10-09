@@ -32,6 +32,7 @@ export default function AuthenPage() {
   const success = useWatch({ control, name: "success" });
   const fail = useWatch({ control, name: "fail" });
   const faceStep = useWatch({ control, name: "faceStep" });
+  const pubIP = useWatch({ control, name: "pubIP" });
 
   useEffect(() => {
     if (success) {
@@ -73,6 +74,7 @@ export default function AuthenPage() {
         })
         .catch((error) => {
           console.error("Error fetching IP address:", error);
+          setValue("pubIP", "na");
         });
     }
     fetchData();
@@ -107,7 +109,11 @@ export default function AuthenPage() {
         </div>
       )}
 
-      {faceStep && <FaceDetect />}
+      {faceStep && (
+        <FormProvider {...methods}>
+          <FaceDetect />
+        </FormProvider>
+      )}
     </section>
   );
 }
